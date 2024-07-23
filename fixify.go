@@ -141,7 +141,7 @@ func New(t testing.TB, cs ...ModelConnector) *Fixture {
 	f := &Fixture{
 		t: t,
 	}
-	allWithDuplicates := flat(cs...)
+	allWithDuplicates := flat(cs)
 	// 順序をあえてランダムにする
 	rand.Shuffle(len(allWithDuplicates), func(i, j int) {
 		allWithDuplicates[i], allWithDuplicates[j] = allWithDuplicates[j], allWithDuplicates[i]
@@ -217,11 +217,11 @@ func uniq(cs []ModelConnector) []ModelConnector {
 	return uniq
 }
 
-func flat(cs ...ModelConnector) []ModelConnector {
+func flat(cs []ModelConnector) []ModelConnector {
 	all := make([]ModelConnector, 0, len(cs))
 	for _, c := range cs {
 		all = append(all, c)
-		all = append(all, flat(c.children()...)...)
+		all = append(all, flat(c.children())...)
 	}
 	return all
 }
