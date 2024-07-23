@@ -6,15 +6,15 @@ import (
 	"testing"
 )
 
-type ModelConnectorImpl[T any] struct {
-	m            *T
-	connectFuncs []Connecter[T]
+type Model[T any] struct {
+	m              *T
+	connectorFuncs []Connecter[T]
 
-	parentSet map[ModelConnector]struct{}
-	childSet  map[ModelConnector]struct{}
+	parentSet map[IModel]struct{}
+	childSet  map[IModel]struct{}
 }
 
-func (mc *ModelConnectorImpl[T]) Value() *T {
+func (mc *Model[T]) Value() *T {
 	return mc.m
 }
 
@@ -23,7 +23,7 @@ type Connecter[T any] interface {
 	canConnect(parentModel any) bool
 }
 
-func ConnectParentFunc[U, V any](f func(t testing.TB, childModel *U, parentModel *V)) Connecter[U] {
+func ConnectorFunc[U, V any](f func(t testing.TB, childModel *U, parentModel *V)) Connecter[U] {
 	return connectParentFunc[U, V](f)
 }
 
@@ -40,31 +40,31 @@ func (f connectParentFunc[U, V]) canConnect(parentModel any) bool {
 	return ok
 }
 
-func NewModelConnector[T any](model *T, connectorFuncs ...Connecter[T]) *ModelConnectorImpl[T] {
-	return &ModelConnectorImpl[T]{
-		m:            model,
-		connectFuncs: connectorFuncs,
+func NewModel[T any](model *T, connectorFuncs ...Connecter[T]) *Model[T] {
+	return &Model[T]{
+		m:              model,
+		connectorFuncs: connectorFuncs,
 	}
 }
 
-type ModelConnector interface {
+type IModel interface {
 	// Children() []ModelConnector
 	// Descendants() []ModelConnector
 	model() any
-	setParent(parent ModelConnector)
-	parents() []ModelConnector
-	setChild(child ModelConnector)
-	children() []ModelConnector
+	setParent(parent IModel)
+	parents() []IModel
+	setChild(child IModel)
+	children() []IModel
 	canConnect(parent any) bool
 	connectors() []func(t testing.TB, parent any)
 }
 
-func (mc *ModelConnectorImpl[T]) Bind(b **ModelConnectorImpl[T]) *ModelConnectorImpl[T] {
+func (mc *Model[T]) Bind(b **Model[T]) *Model[T] {
 	*b = mc
 	return mc
 }
 
-func (mc *ModelConnectorImpl[T]) With(connectors ...ModelConnector) *ModelConnectorImpl[T] {
+func (mc *Model[T]) With(connectors ...IModel) *Model[T] {
 	for _, c := range connectors {
 		if _, ok := mc.parentSet[c]; ok {
 			panic(fmt.Errorf("cyclic dependency: %T <-> %T", mc.Value(), c.model()))
@@ -78,35 +78,35 @@ func (mc *ModelConnectorImpl[T]) With(connectors ...ModelConnector) *ModelConnec
 	return mc // メソッドチェーンで記述できるようにする
 }
 
-func (mc *ModelConnectorImpl[T]) model() any {
+func (mc *Model[T]) model() any {
 	return mc.m
 }
 
-func (mc *ModelConnectorImpl[T]) setParent(parent ModelConnector) {
+func (mc *Model[T]) setParent(parent IModel) {
 	if mc.parentSet == nil {
-		mc.parentSet = map[ModelConnector]struct{}{}
+		mc.parentSet = map[IModel]struct{}{}
 	}
 	mc.parentSet[parent] = struct{}{}
 }
 
-func (mc *ModelConnectorImpl[T]) parents() []ModelConnector {
+func (mc *Model[T]) parents() []IModel {
 	return keys(mc.parentSet)
 }
 
-func (mc *ModelConnectorImpl[T]) setChild(child ModelConnector) {
+func (mc *Model[T]) setChild(child IModel) {
 	if mc.childSet == nil {
-		mc.childSet = map[ModelConnector]struct{}{}
+		mc.childSet = map[IModel]struct{}{}
 	}
 	mc.childSet[child] = struct{}{}
 }
 
-func (mc *ModelConnectorImpl[T]) children() []ModelConnector {
+func (mc *Model[T]) children() []IModel {
 	return keys(mc.childSet)
 }
 
-func (mc *ModelConnectorImpl[T]) connectors() []func(t testing.TB, parent any) {
-	funcs := make([]func(t testing.TB, parent any), 0, len(mc.connectFuncs))
-	for _, f := range mc.connectFuncs {
+func (mc *Model[T]) connectors() []func(t testing.TB, parent any) {
+	funcs := make([]func(t testing.TB, parent any), 0, len(mc.connectorFuncs))
+	for _, f := range mc.connectorFuncs {
 		funcs = append(funcs, func(t testing.TB, parent any) {
 			f.connect(t, mc.m, parent)
 		})
@@ -114,8 +114,8 @@ func (mc *ModelConnectorImpl[T]) connectors() []func(t testing.TB, parent any) {
 	return funcs
 }
 
-func (mc *ModelConnectorImpl[T]) canConnect(parent any) bool {
-	for _, f := range mc.connectFuncs {
+func (mc *Model[T]) canConnect(parent any) bool {
+	for _, f := range mc.connectorFuncs {
 		if f.canConnect(parent) {
 			return true
 		}
@@ -133,10 +133,10 @@ func (mc *ModelConnectorImpl[T]) canConnect(parent any) bool {
 
 type Fixture struct {
 	t          testing.TB
-	connectors []ModelConnector
+	connectors []IModel
 }
 
-func New(t testing.TB, cs ...ModelConnector) *Fixture {
+func New(t testing.TB, cs ...IModel) *Fixture {
 	t.Helper()
 	f := &Fixture{
 		t: t,
@@ -147,12 +147,12 @@ func New(t testing.TB, cs ...ModelConnector) *Fixture {
 		allWithDuplicates[i], allWithDuplicates[j] = allWithDuplicates[j], allWithDuplicates[i]
 	})
 	all := uniq(allWithDuplicates)
-	numParents := make(map[ModelConnector]int, len(all))
+	numParents := make(map[IModel]int, len(all))
 	for _, c := range all {
 		numParents[c] = len(c.parents())
 	}
 	// topological sort
-	sorted := make([]ModelConnector, 0, len(all))
+	sorted := make([]IModel, 0, len(all))
 	for {
 		allZeros := true
 		for _, c := range all {
@@ -205,9 +205,9 @@ func (f *Fixture) Iterate(setter func(model any) error) {
 	}
 }
 
-func uniq(cs []ModelConnector) []ModelConnector {
-	seen := make(map[ModelConnector]struct{}, len(cs))
-	uniq := make([]ModelConnector, 0, len(cs))
+func uniq(cs []IModel) []IModel {
+	seen := make(map[IModel]struct{}, len(cs))
+	uniq := make([]IModel, 0, len(cs))
 	for _, c := range cs {
 		if _, ok := seen[c]; !ok {
 			seen[c] = struct{}{}
@@ -217,8 +217,8 @@ func uniq(cs []ModelConnector) []ModelConnector {
 	return uniq
 }
 
-func flat(cs []ModelConnector) []ModelConnector {
-	all := make([]ModelConnector, 0, len(cs))
+func flat(cs []IModel) []IModel {
+	all := make([]IModel, 0, len(cs))
 	for _, c := range cs {
 		all = append(all, c)
 		all = append(all, flat(c.children())...)
