@@ -179,12 +179,30 @@ func TestFixture_Iterate(t *testing.T) {
 	}
 }
 
-func filter[V any](values []any) []V {
-	results := make([]V, 0, len(values))
-	for _, v := range values {
-		if v, ok := v.(V); ok {
-			results = append(results, v)
-		}
-	}
-	return results
+// Book represents a fixture for the book model.
+func Book() *fixify.Model[model.Book] {
+	book := new(model.Book)
+	return fixify.NewModel(book,
+		// specify how to connect a book to a library.
+		fixify.ConnectorFunc(func(t testing.TB, childModel *model.Book, parentModel *model.Library) {
+			childModel.LibraryID = parentModel.ID
+		}),
+	)
+}
+
+// Page represents a fixture for the page model.
+func Page() *fixify.Model[model.Page] {
+	page := new(model.Page)
+	return fixify.NewModel(page,
+		// specify how to connect a page to a book.
+		fixify.ConnectorFunc(func(t testing.TB, childModel *model.Page, parentModel *model.Book) {
+			childModel.BookID = parentModel.ID
+		}),
+	)
+}
+
+// Library represents a fixture for the library model.
+func Library() *fixify.Model[model.Library] {
+	// library is the root model, so it does not need a connector function.
+	return fixify.NewModel(new(model.Library))
 }

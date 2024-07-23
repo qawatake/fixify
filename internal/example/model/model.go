@@ -22,3 +22,18 @@ type Author struct {
 	ID   int64
 	Name string
 }
+
+type Company struct {
+	ID int64
+}
+
+type Department struct {
+	ID        int64
+	CompanyID int64
+	Name      string
+}
+
+type Employee struct {
+	ID           int64
+	DepartmentID int64
+}

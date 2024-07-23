@@ -6,28 +6,52 @@ import (
 	"testing"
 )
 
+// Model is a wrapper model with ability to connect to other models.
+// It implements IModel.
 type Model[T any] struct {
-	m              *T
+	v              *T
 	connectorFuncs []Connecter[T]
 
 	parentSet map[IModel]struct{}
 	childSet  map[IModel]struct{}
 }
 
-func (mc *Model[T]) Value() *T {
-	return mc.m
+var _ IModel = &Model[int]{}
+
+// IModel represents a set of models that can be connected to each other.
+type IModel interface {
+	// Children() []ModelConnector
+	// Descendants() []ModelConnector
+
+	model() any
+	setParent(parent IModel)
+	parents() []IModel
+	setChild(child IModel)
+	children() []IModel
+	canConnect(parent any) bool
+	connectors() []func(t testing.TB, parent any)
 }
 
+// NewModel is a constructor of Model.
+func NewModel[T any](model *T, connectorFuncs ...Connecter[T]) *Model[T] {
+	return &Model[T]{
+		v:              model,
+		connectorFuncs: connectorFuncs,
+	}
+}
+
+// Connector is an interface that incorporates the connector functions of the form func(t testing.TB, childModel *U, parentModel *V).
+// It is used to establish connections between different model types.
+// Use [ConnectorFunc] to get one.
 type Connecter[T any] interface {
 	connect(t testing.TB, childModel *T, parentModel any)
 	canConnect(parentModel any) bool
 }
 
-func ConnectorFunc[U, V any](f func(t testing.TB, childModel *U, parentModel *V)) Connecter[U] {
-	return connectParentFunc[U, V](f)
-}
-
+// connectParentFunc[U, V] implements Connecter[U].
 type connectParentFunc[U, V any] func(t testing.TB, childModel *U, parentModel *V)
+
+var _ Connecter[int] = connectParentFunc[int, string](nil)
 
 func (f connectParentFunc[U, V]) connect(t testing.TB, childModel *U, parentModel any) {
 	if v, ok := parentModel.(*V); ok {
@@ -40,82 +64,82 @@ func (f connectParentFunc[U, V]) canConnect(parentModel any) bool {
 	return ok
 }
 
-func NewModel[T any](model *T, connectorFuncs ...Connecter[T]) *Model[T] {
-	return &Model[T]{
-		m:              model,
-		connectorFuncs: connectorFuncs,
-	}
+// ConnectorFunc translates a function of the form func(t testing.TB, childModel *U, parentModel *V) into Connecter[U].
+func ConnectorFunc[U, V any](f func(t testing.TB, childModel *U, parentModel *V)) Connecter[U] {
+	return connectParentFunc[U, V](f)
 }
 
-type IModel interface {
-	// Children() []ModelConnector
-	// Descendants() []ModelConnector
-	model() any
-	setParent(parent IModel)
-	parents() []IModel
-	setChild(child IModel)
-	children() []IModel
-	canConnect(parent any) bool
-	connectors() []func(t testing.TB, parent any)
-}
-
-func (mc *Model[T]) Bind(b **Model[T]) *Model[T] {
-	*b = mc
-	return mc
-}
-
-func (mc *Model[T]) With(connectors ...IModel) *Model[T] {
-	for _, c := range connectors {
-		if _, ok := mc.parentSet[c]; ok {
-			panic(fmt.Errorf("cyclic dependency: %T <-> %T", mc.Value(), c.model()))
+// With registers children models.
+func (m *Model[T]) With(children ...IModel) *Model[T] {
+	for _, c := range children {
+		if _, ok := m.parentSet[c]; ok {
+			panic(fmt.Errorf("cyclic dependency: %T <-> %T", m.Value(), c.model()))
 		}
-		if !c.canConnect(mc.Value()) {
-			panic(fmt.Errorf("cannot connect: child %T -> parent %T", c.model(), mc.Value()))
+		if !c.canConnect(m.Value()) {
+			panic(fmt.Errorf("cannot connect: child %T -> parent %T", c.model(), m.Value()))
 		}
-		mc.setChild(c)
-		c.setParent(mc)
+		m.setChild(c)
+		c.setParent(m)
 	}
-	return mc // メソッドチェーンで記述できるようにする
+	return m // メソッドチェーンで記述できるようにする
 }
 
-func (mc *Model[T]) model() any {
-	return mc.m
+// Bind sets the pointer to the model.
+func (m *Model[T]) Bind(b **Model[T]) *Model[T] {
+	*b = m
+	return m
 }
 
-func (mc *Model[T]) setParent(parent IModel) {
-	if mc.parentSet == nil {
-		mc.parentSet = map[IModel]struct{}{}
+// Value returns the underlying model.
+func (m *Model[T]) Value() *T {
+	return m.v
+}
+
+// model returns the underlying model.
+func (m *Model[T]) model() any {
+	return m.v
+}
+
+// setParent sets the parent model.
+func (m *Model[T]) setParent(parent IModel) {
+	if m.parentSet == nil {
+		m.parentSet = map[IModel]struct{}{}
 	}
-	mc.parentSet[parent] = struct{}{}
+	m.parentSet[parent] = struct{}{}
 }
 
-func (mc *Model[T]) parents() []IModel {
-	return keys(mc.parentSet)
+// parents returns the parent models.
+func (m *Model[T]) parents() []IModel {
+	return keys(m.parentSet)
 }
 
-func (mc *Model[T]) setChild(child IModel) {
-	if mc.childSet == nil {
-		mc.childSet = map[IModel]struct{}{}
+// setChild sets the child model.
+func (m *Model[T]) setChild(child IModel) {
+	if m.childSet == nil {
+		m.childSet = map[IModel]struct{}{}
 	}
-	mc.childSet[child] = struct{}{}
+	m.childSet[child] = struct{}{}
 }
 
-func (mc *Model[T]) children() []IModel {
-	return keys(mc.childSet)
+// children returns the children models.
+func (m *Model[T]) children() []IModel {
+	return keys(m.childSet)
 }
 
-func (mc *Model[T]) connectors() []func(t testing.TB, parent any) {
-	funcs := make([]func(t testing.TB, parent any), 0, len(mc.connectorFuncs))
-	for _, f := range mc.connectorFuncs {
+// connectors returns the connector functions.
+func (m *Model[T]) connectors() []func(t testing.TB, parent any) {
+	funcs := make([]func(t testing.TB, parent any), 0, len(m.connectorFuncs))
+	for _, f := range m.connectorFuncs {
 		funcs = append(funcs, func(t testing.TB, parent any) {
-			f.connect(t, mc.m, parent)
+			f.connect(t, m.v, parent)
 		})
 	}
 	return funcs
 }
 
-func (mc *Model[T]) canConnect(parent any) bool {
-	for _, f := range mc.connectorFuncs {
+// canConnect returns true if the model can connect to the parent.
+func (m *Model[T]) canConnect(parent any) bool {
+	for _, f := range m.connectorFuncs {
 		if f.canConnect(parent) {
 			return true
 		}
@@ -123,14 +147,15 @@ func (mc *Model[T]) canConnect(parent any) bool {
 	return false
 }
 
-// func (mc *ModelConnectorImpl[T]) Children() []ModelConnector {
-// 	return mc.children()
+// func (m *ModelConnectorImpl[T]) Children() []ModelConnector {
+// 	return m.children()
 // }
 
-// func (mc *ModelConnectorImpl[T]) Descendants() []ModelConnector {
-// 	return flat(mc.children()...)
+// func (m *ModelConnectorImpl[T]) Descendants() []ModelConnector {
+// 	return flat(m.children()...)
 // }
 
+// Fixture collects models and resolves their dependencies.
 type Fixture struct {
 	t          testing.TB
 	connectors []IModel
@@ -190,11 +215,11 @@ func (f *Fixture) All() []any {
 	return models
 }
 
-// Iterate applies visit in the topological order of the models.
-func (f *Fixture) Iterate(setter func(model any) error) {
+// Iterate applies visit and call connector functions in the topological order of the models.
+func (f *Fixture) Iterate(visit func(model any) error) {
 	f.t.Helper()
 	for _, c := range f.connectors {
-		if err := setter(c.model()); err != nil {
+		if err := visit(c.model()); err != nil {
 			f.t.Fatalf("failed to visit %v: %v", c.model(), err)
 		}
 		for _, child := range c.children() {
