@@ -50,7 +50,6 @@ func NewModelConnector[T any](model T, connectorFuncs ...Connecter[T]) *ModelCon
 type ModelConnector interface {
 	// Children() []ModelConnector
 	// Descendants() []ModelConnector
-	AnyValue() any
 	model() any
 	setParent(parent ModelConnector)
 	parents() []ModelConnector
@@ -131,10 +130,6 @@ func (mc *ModelConnectorImpl[T]) canConnect(parent any) bool {
 // func (mc *ModelConnectorImpl[T]) Descendants() []ModelConnector {
 // 	return flat(mc.children()...)
 // }
-
-func (mc *ModelConnectorImpl[T]) AnyValue() any {
-	return mc.m
-}
 
 type Fixture struct {
 	t          testing.TB
