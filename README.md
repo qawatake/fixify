@@ -18,12 +18,9 @@ func TestRun(t *testing.T) {
 			),
 		),
 	)
-	// Iterate applies visitor function to each model and then call the connector functions.
+	// Iterate applies visitor function to each model and connect it to its children in the topological order.
 	f.Iterate(setter)
-	// retrieve all models.
-	allModels := f.All()
-	// assertion here
-	// ...
+	// finally, run the test!
 }
 ```
 
