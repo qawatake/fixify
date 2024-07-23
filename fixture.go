@@ -20,6 +20,7 @@ func (mc *ModelConnectorImpl[T]) Value() T {
 
 type Connecter[T any] interface {
 	connect(t testing.TB, childModel T, parentModel any)
+	canConnect(parentModel any) bool
 }
 
 func ConnectParentFunc[U, V any](f func(t testing.TB, childModel U, parentModel V)) Connecter[U] {
@@ -32,6 +33,11 @@ func (f connectParentFunc[U, V]) connect(t testing.TB, childModel U, parentModel
 	if v, ok := parentModel.(V); ok {
 		f(t, childModel, v)
 	}
+}
+
+func (f connectParentFunc[U, V]) canConnect(parentModel any) bool {
+	_, ok := parentModel.(V)
+	return ok
 }
 
 func NewModelConnector[T any](model T, connectorFuncs ...Connecter[T]) *ModelConnectorImpl[T] {
@@ -50,6 +56,7 @@ type ModelConnector interface {
 	parents() []ModelConnector
 	setChild(child ModelConnector)
 	children() []ModelConnector
+	canConnect(parent any) bool
 	connectors() []func(t testing.TB, parent any)
 }
 
@@ -59,14 +66,14 @@ func (mc *ModelConnectorImpl[T]) Bind(b **ModelConnectorImpl[T]) *ModelConnector
 }
 
 func (mc *ModelConnectorImpl[T]) With(connectors ...ModelConnector) *ModelConnectorImpl[T] {
-	if mc.childSet == nil {
-		mc.childSet = map[ModelConnector]struct{}{}
-	}
 	for _, c := range connectors {
 		if _, ok := mc.parentSet[c]; ok {
 			panic(fmt.Errorf("cyclic dependency: %T <-> %T", mc.Value(), c.model()))
 		}
-		mc.childSet[c] = struct{}{}
+		if !c.canConnect(mc.Value()) {
+			panic(fmt.Errorf("cannot connect: child %T -> parent %T", c.model(), mc.Value()))
+		}
+		mc.setChild(c)
 		c.setParent(mc)
 	}
 	return mc // メソッドチェーンで記述できるようにする
@@ -106,6 +113,15 @@ func (mc *ModelConnectorImpl[T]) connectors() []func(t testing.TB, parent any) {
 		})
 	}
 	return funcs
+}
+
+func (mc *ModelConnectorImpl[T]) canConnect(parent any) bool {
+	for _, f := range mc.connectFuncs {
+		if f.canConnect(parent) {
+			return true
+		}
+	}
+	return false
 }
 
 // func (mc *ModelConnectorImpl[T]) Children() []ModelConnector {

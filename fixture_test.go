@@ -23,12 +23,19 @@ func TestModelConnectorImpl_With(t *testing.T) {
 		)
 	})
 
+	t.Run("try to connect to non-parent", func(t *testing.T) {
+		book := Book()
+		assert.Panics(t, func() {
+			book.With(Library())
+		})
+	})
+
 	t.Run("cyclic", func(t *testing.T) {
 		library := Library()
 		book := Book()
-		book.With(library)
+		library.With(book)
 		assert.Panics(t, func() {
-			library.With(book)
+			book.With(library)
 		})
 	})
 }
