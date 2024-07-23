@@ -7,7 +7,7 @@ import (
 	"github.com/qawatake/fixify/model"
 )
 
-func Book() *fixify.ModelConnectorImpl[*model.Book] {
+func Book() *fixify.ModelConnectorImpl[model.Book] {
 	book := new(model.Book)
 	return fixify.NewModelConnector(book,
 		fixify.ConnectParentFunc(func(t testing.TB, childModel *model.Book, parentModel *model.Library) {
@@ -16,7 +16,7 @@ func Book() *fixify.ModelConnectorImpl[*model.Book] {
 	)
 }
 
-func Page() *fixify.ModelConnectorImpl[*model.Page] {
+func Page() *fixify.ModelConnectorImpl[model.Page] {
 	page := new(model.Page)
 	return fixify.NewModelConnector(page,
 		fixify.ConnectParentFunc(func(t testing.TB, childModel *model.Page, parentModel *model.Book) {
@@ -25,6 +25,6 @@ func Page() *fixify.ModelConnectorImpl[*model.Page] {
 	)
 }
 
-func Library() *fixify.ModelConnectorImpl[*model.Library] {
+func Library() *fixify.ModelConnectorImpl[model.Library] {
 	return fixify.NewModelConnector(new(model.Library))
 }

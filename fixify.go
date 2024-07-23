@@ -7,40 +7,40 @@ import (
 )
 
 type ModelConnectorImpl[T any] struct {
-	m            T
+	m            *T
 	connectFuncs []Connecter[T]
 
 	parentSet map[ModelConnector]struct{}
 	childSet  map[ModelConnector]struct{}
 }
 
-func (mc *ModelConnectorImpl[T]) Value() T {
+func (mc *ModelConnectorImpl[T]) Value() *T {
 	return mc.m
 }
 
 type Connecter[T any] interface {
-	connect(t testing.TB, childModel T, parentModel any)
+	connect(t testing.TB, childModel *T, parentModel any)
 	canConnect(parentModel any) bool
 }
 
-func ConnectParentFunc[U, V any](f func(t testing.TB, childModel U, parentModel V)) Connecter[U] {
+func ConnectParentFunc[U, V any](f func(t testing.TB, childModel *U, parentModel *V)) Connecter[U] {
 	return connectParentFunc[U, V](f)
 }
 
-type connectParentFunc[U, V any] func(t testing.TB, childModel U, parentModel V)
+type connectParentFunc[U, V any] func(t testing.TB, childModel *U, parentModel *V)
 
-func (f connectParentFunc[U, V]) connect(t testing.TB, childModel U, parentModel any) {
-	if v, ok := parentModel.(V); ok {
+func (f connectParentFunc[U, V]) connect(t testing.TB, childModel *U, parentModel any) {
+	if v, ok := parentModel.(*V); ok {
 		f(t, childModel, v)
 	}
 }
 
 func (f connectParentFunc[U, V]) canConnect(parentModel any) bool {
-	_, ok := parentModel.(V)
+	_, ok := parentModel.(*V)
 	return ok
 }
 
-func NewModelConnector[T any](model T, connectorFuncs ...Connecter[T]) *ModelConnectorImpl[T] {
+func NewModelConnector[T any](model *T, connectorFuncs ...Connecter[T]) *ModelConnectorImpl[T] {
 	return &ModelConnectorImpl[T]{
 		m:            model,
 		connectFuncs: connectorFuncs,

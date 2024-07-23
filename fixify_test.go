@@ -41,7 +41,7 @@ func TestModelConnectorImpl_With(t *testing.T) {
 }
 
 func TestModelConnectorImpl_Bind(t *testing.T) {
-	var library *fixify.ModelConnectorImpl[*model.Library]
+	var library *fixify.ModelConnectorImpl[model.Library]
 	f := fixify.New(t,
 		Library().With(
 			Book(),
