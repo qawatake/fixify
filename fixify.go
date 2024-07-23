@@ -85,6 +85,7 @@ func (m *Model[T]) With(children ...IModel) *Model[T] {
 }
 
 // Bind sets the pointer to the model.
+// It is useful when you want to connect models to multiple parents.
 func (m *Model[T]) Bind(b **Model[T]) *Model[T] {
 	*b = m
 	return m

@@ -37,3 +37,17 @@ type Employee struct {
 	ID           int64
 	DepartmentID int64
 }
+
+type Classroom struct {
+	ID int64
+}
+
+type Student struct {
+	ID int64
+}
+
+type Enrollment struct {
+	ID          int64
+	StudentID   int64
+	ClassroomID int64
+}

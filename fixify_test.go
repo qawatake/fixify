@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/qawatake/fixify"
-	"github.com/qawatake/fixify/model"
+	"github.com/qawatake/fixify/internal/example/model"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -25,7 +25,36 @@ func ExampleNewModel() {
 	newFixtureBook()
 }
 
-func TestModelConnectorImpl_With(t *testing.T) {
+func ExampleModel_With() {
+	// Company, Department, and Employee are fixtures for the company, department, and employee models.
+	Company().With(
+		Department("finance").With(
+			Employee(),
+			Employee(),
+		),
+		Department("sales").With(
+			Employee(),
+			Employee(),
+			Employee(),
+		),
+	)
+}
+
+func ExampleModel_Bind() {
+	// t is passed from the test function.
+	t := &testing.T{}
+	var enrollment *fixify.Model[model.Enrollment]
+	fixify.New(t,
+		Student().With(
+			Enrollment().Bind(&enrollment),
+		),
+		Classroom().With(
+			enrollment,
+		),
+	)
+}
+
+func TestModel_With(t *testing.T) {
 	t.Parallel()
 
 	t.Run("normal", func(t *testing.T) {
@@ -57,7 +86,7 @@ func TestModelConnectorImpl_With(t *testing.T) {
 	})
 }
 
-func TestModelConnectorImpl_Bind(t *testing.T) {
+func TestModel_Bind(t *testing.T) {
 	var library *fixify.Model[model.Library]
 	f := fixify.New(t,
 		Library().With(
@@ -127,7 +156,7 @@ func TestModelConnectorImpl_Bind(t *testing.T) {
 // 	})
 // }
 
-func TestBuild_and_Fixture_All(t *testing.T) {
+func TestNew_and_Fixture_All(t *testing.T) {
 	t.Run("no connectors", func(t *testing.T) {
 		f := fixify.New(t)
 		assert.Len(t, f.All(), 0)
@@ -222,4 +251,23 @@ func Page() *fixify.Model[model.Page] {
 func Library() *fixify.Model[model.Library] {
 	// library is the root model, so it does not need a connector function.
 	return fixify.NewModel(new(model.Library))
+}
+
+func Student() *fixify.Model[model.Student] {
+	return fixify.NewModel(new(model.Student))
+}
+
+func Classroom() *fixify.Model[model.Classroom] {
+	return fixify.NewModel(new(model.Classroom))
+}
+
+func Enrollment() *fixify.Model[model.Enrollment] {
+	return fixify.NewModel(new(model.Enrollment),
+		fixify.ConnectorFunc(func(t testing.TB, enrollment *model.Enrollment, student *model.Student) {
+			enrollment.StudentID = student.ID
+		}),
+		fixify.ConnectorFunc(func(t testing.TB, enrollment *model.Enrollment, classroom *model.Classroom) {
+			enrollment.ClassroomID = classroom.ID
+		}),
+	)
 }
