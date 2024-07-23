@@ -13,16 +13,17 @@ func ExampleNewModel() {
 		book := new(model.Book)
 		return fixify.NewModel(book,
 			// specify how to connect a book to a library.
-			fixify.ConnectorFunc(func(t testing.TB, book *model.Book, library *model.Library) {
+			fixify.ConnectorFunc(func(_ testing.TB, book *model.Book, library *model.Library) {
 				book.LibraryID = library.ID
 			}),
 			// specify how to connect a book to an author.
-			fixify.ConnectorFunc(func(t testing.TB, book *model.Book, author *model.Author) {
+			fixify.ConnectorFunc(func(_ testing.TB, book *model.Book, author *model.Author) {
 				book.AuthorID = author.ID
 			}),
 		)
 	}
 	newFixtureBook()
+	// Output:
 }
 
 func ExampleModel_With() {
@@ -38,6 +39,7 @@ func ExampleModel_With() {
 			Employee(),
 		),
 	)
+	// Output:
 }
 
 func ExampleModel_Bind() {
@@ -52,12 +54,13 @@ func ExampleModel_Bind() {
 			enrollment,
 		),
 	)
+	// Output:
 }
 
 func TestModel_With(t *testing.T) {
 	t.Parallel()
-
 	t.Run("normal", func(t *testing.T) {
+		t.Parallel()
 		Library().With(
 			Book().With(
 				Page(),
@@ -70,6 +73,7 @@ func TestModel_With(t *testing.T) {
 	})
 
 	t.Run("try to connect to non-parent", func(t *testing.T) {
+		t.Parallel()
 		book := Book()
 		assert.Panics(t, func() {
 			book.With(Library())
@@ -77,6 +81,7 @@ func TestModel_With(t *testing.T) {
 	})
 
 	t.Run("cyclic", func(t *testing.T) {
+		t.Parallel()
 		library := Library()
 		book := Book()
 		library.With(book)
@@ -87,6 +92,7 @@ func TestModel_With(t *testing.T) {
 }
 
 func TestModel_Bind(t *testing.T) {
+	t.Parallel()
 	var library *fixify.Model[model.Library]
 	f := fixify.New(t,
 		Library().With(
@@ -157,12 +163,15 @@ func TestModel_Bind(t *testing.T) {
 // }
 
 func TestNew_and_Fixture_All(t *testing.T) {
+	t.Parallel()
 	t.Run("no connectors", func(t *testing.T) {
+		t.Parallel()
 		f := fixify.New(t)
-		assert.Len(t, f.All(), 0)
+		assert.Empty(t, f.All(), 0)
 	})
 
 	t.Run("same connector", func(t *testing.T) {
+		t.Parallel()
 		library := Library()
 		f := fixify.New(t, library, library)
 		assert.Len(t, f.All(), 1)
@@ -170,6 +179,7 @@ func TestNew_and_Fixture_All(t *testing.T) {
 	})
 
 	t.Run("normal", func(t *testing.T) {
+		t.Parallel()
 		f := fixify.New(t,
 			Library().With(
 				Book().With(
@@ -189,6 +199,7 @@ func TestNew_and_Fixture_All(t *testing.T) {
 }
 
 func TestFixture_Iterate(t *testing.T) {
+	t.Parallel()
 	f := fixify.New(t,
 		Library().With(
 			Book().With(
@@ -230,7 +241,7 @@ func Book() *fixify.Model[model.Book] {
 	book := new(model.Book)
 	return fixify.NewModel(book,
 		// specify how to connect a book to a library.
-		fixify.ConnectorFunc(func(t testing.TB, book *model.Book, library *model.Library) {
+		fixify.ConnectorFunc(func(_ testing.TB, book *model.Book, library *model.Library) {
 			book.LibraryID = library.ID
 		}),
 	)
@@ -241,7 +252,7 @@ func Page() *fixify.Model[model.Page] {
 	page := new(model.Page)
 	return fixify.NewModel(page,
 		// specify how to connect a page to a book.
-		fixify.ConnectorFunc(func(t testing.TB, page *model.Page, book *model.Book) {
+		fixify.ConnectorFunc(func(_ testing.TB, page *model.Page, book *model.Book) {
 			page.BookID = book.ID
 		}),
 	)
@@ -263,10 +274,10 @@ func Classroom() *fixify.Model[model.Classroom] {
 
 func Enrollment() *fixify.Model[model.Enrollment] {
 	return fixify.NewModel(new(model.Enrollment),
-		fixify.ConnectorFunc(func(t testing.TB, enrollment *model.Enrollment, student *model.Student) {
+		fixify.ConnectorFunc(func(_ testing.TB, enrollment *model.Enrollment, student *model.Student) {
 			enrollment.StudentID = student.ID
 		}),
-		fixify.ConnectorFunc(func(t testing.TB, enrollment *model.Enrollment, classroom *model.Classroom) {
+		fixify.ConnectorFunc(func(_ testing.TB, enrollment *model.Enrollment, classroom *model.Classroom) {
 			enrollment.ClassroomID = classroom.ID
 		}),
 	)

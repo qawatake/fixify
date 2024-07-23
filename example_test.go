@@ -68,8 +68,8 @@ func Department(name string) *fixify.Model[model.Department] {
 	}
 	return fixify.NewModel(d,
 		// specify how to connect a department to a company.
-		fixify.ConnectorFunc(func(t testing.TB, childModel *model.Department, parentModel *model.Company) {
-			childModel.CompanyID = parentModel.ID
+		fixify.ConnectorFunc(func(_ testing.TB, department *model.Department, company *model.Company) {
+			department.CompanyID = company.ID
 		}),
 	)
 }
@@ -78,8 +78,8 @@ func Department(name string) *fixify.Model[model.Department] {
 func Employee() *fixify.Model[model.Employee] {
 	return fixify.NewModel(new(model.Employee),
 		// specify how to connect an employee to a department.
-		fixify.ConnectorFunc(func(t testing.TB, childModel *model.Employee, parentModel *model.Department) {
-			childModel.DepartmentID = parentModel.ID
+		fixify.ConnectorFunc(func(_ testing.TB, employee *model.Employee, department *model.Department) {
+			employee.DepartmentID = department.ID
 		}),
 	)
 }

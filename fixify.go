@@ -53,12 +53,15 @@ type connectParentFunc[U, V any] func(t testing.TB, childModel *U, parentModel *
 
 var _ Connecter[int] = connectParentFunc[int, string](nil)
 
-func (f connectParentFunc[U, V]) connect(t testing.TB, childModel *U, parentModel any) {
+//nolint:unused // it is necessary to implement the interface Connecter[U].
+func (f connectParentFunc[U, V]) connect(tb testing.TB, childModel *U, parentModel any) {
+	tb.Helper()
 	if v, ok := parentModel.(*V); ok {
-		f(t, childModel, v)
+		f(tb, childModel, v)
 	}
 }
 
+//nolint:unused // it is necessary to implement the interface Connecter[U].
 func (f connectParentFunc[U, V]) canConnect(parentModel any) bool {
 	_, ok := parentModel.(*V)
 	return ok
@@ -81,6 +84,7 @@ func (m *Model[T]) With(children ...IModel) *Model[T] {
 		m.setChild(c)
 		c.setParent(m)
 	}
+
 	return m // メソッドチェーンで記述できるようにする
 }
 
@@ -131,8 +135,9 @@ func (m *Model[T]) children() []IModel {
 func (m *Model[T]) connectors() []func(t testing.TB, parent any) {
 	funcs := make([]func(t testing.TB, parent any), 0, len(m.connectorFuncs))
 	for _, f := range m.connectorFuncs {
-		funcs = append(funcs, func(t testing.TB, parent any) {
-			f.connect(t, m.v, parent)
+		funcs = append(funcs, func(tb testing.TB, parent any) {
+			tb.Helper()
+			f.connect(tb, m.v, parent)
 		})
 	}
 	return funcs
@@ -162,10 +167,10 @@ type Fixture struct {
 	connectors []IModel
 }
 
-func New(t testing.TB, cs ...IModel) *Fixture {
-	t.Helper()
+func New(tb testing.TB, cs ...IModel) *Fixture {
+	tb.Helper()
 	f := &Fixture{
-		t: t,
+		t: tb,
 	}
 	allWithDuplicates := flat(cs)
 	// 順序をあえてランダムにする
@@ -197,7 +202,7 @@ func New(t testing.TB, cs ...IModel) *Fixture {
 			if numParents[c] == 0 {
 				sorted = append(sorted, c)
 				for _, child := range c.children() {
-					numParents[child] -= 1
+					numParents[child]--
 				}
 				all[i] = nil
 			}
