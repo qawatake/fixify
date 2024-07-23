@@ -11,6 +11,7 @@ import (
 )
 
 func Example() {
+	// t is passed from the test function.
 	t := &testing.T{}
 	// specify how to connect models in the declarative way.
 	f := fixify.New(t,
@@ -73,6 +74,7 @@ func Department(name string) *fixify.Model[model.Department] {
 	)
 }
 
+// Employee represents a fixture for the employee model.
 func Employee() *fixify.Model[model.Employee] {
 	return fixify.NewModel(new(model.Employee),
 		// specify how to connect an employee to a department.

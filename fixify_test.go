@@ -8,6 +8,23 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func ExampleNewModel() {
+	newFixtureBook := func() *fixify.Model[model.Book] {
+		book := new(model.Book)
+		return fixify.NewModel(book,
+			// specify how to connect a book to a library.
+			fixify.ConnectorFunc(func(t testing.TB, book *model.Book, library *model.Library) {
+				book.LibraryID = library.ID
+			}),
+			// specify how to connect a book to an author.
+			fixify.ConnectorFunc(func(t testing.TB, book *model.Book, author *model.Author) {
+				book.AuthorID = author.ID
+			}),
+		)
+	}
+	newFixtureBook()
+}
+
 func TestModelConnectorImpl_With(t *testing.T) {
 	t.Parallel()
 
@@ -184,8 +201,8 @@ func Book() *fixify.Model[model.Book] {
 	book := new(model.Book)
 	return fixify.NewModel(book,
 		// specify how to connect a book to a library.
-		fixify.ConnectorFunc(func(t testing.TB, childModel *model.Book, parentModel *model.Library) {
-			childModel.LibraryID = parentModel.ID
+		fixify.ConnectorFunc(func(t testing.TB, book *model.Book, library *model.Library) {
+			book.LibraryID = library.ID
 		}),
 	)
 }
@@ -195,8 +212,8 @@ func Page() *fixify.Model[model.Page] {
 	page := new(model.Page)
 	return fixify.NewModel(page,
 		// specify how to connect a page to a book.
-		fixify.ConnectorFunc(func(t testing.TB, childModel *model.Page, parentModel *model.Book) {
-			childModel.BookID = parentModel.ID
+		fixify.ConnectorFunc(func(t testing.TB, page *model.Page, book *model.Book) {
+			page.BookID = book.ID
 		}),
 	)
 }
