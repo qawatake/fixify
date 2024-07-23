@@ -19,7 +19,7 @@ func (mc *ModelConnectorImpl[T]) Value() T {
 }
 
 type Connecter[T any] interface {
-	connect(t testing.TB, childModel T, parentModel any) bool
+	connect(t testing.TB, childModel T, parentModel any)
 }
 
 func ConnectParentFunc[U, V any](f func(t testing.TB, childModel U, parentModel V)) Connecter[U] {
@@ -28,12 +28,10 @@ func ConnectParentFunc[U, V any](f func(t testing.TB, childModel U, parentModel 
 
 type connectParentFunc[U, V any] func(t testing.TB, childModel U, parentModel V)
 
-func (f connectParentFunc[U, V]) connect(t testing.TB, childModel U, parentModel any) bool {
+func (f connectParentFunc[U, V]) connect(t testing.TB, childModel U, parentModel any) {
 	if v, ok := parentModel.(V); ok {
 		f(t, childModel, v)
-		return true
 	}
-	return false
 }
 
 func NewModelConnector[T any](model T, connectorFuncs ...Connecter[T]) *ModelConnectorImpl[T] {
@@ -52,7 +50,7 @@ type ModelConnector interface {
 	parents() []ModelConnector
 	setChild(child ModelConnector)
 	children() []ModelConnector
-	connectors() []func(t testing.TB, parent any) bool
+	connectors() []func(t testing.TB, parent any)
 }
 
 func (mc *ModelConnectorImpl[T]) Bind(b **ModelConnectorImpl[T]) *ModelConnectorImpl[T] {
@@ -100,11 +98,11 @@ func (mc *ModelConnectorImpl[T]) children() []ModelConnector {
 	return keys(mc.childSet)
 }
 
-func (mc *ModelConnectorImpl[T]) connectors() []func(t testing.TB, parent any) bool {
-	funcs := make([]func(t testing.TB, parent any) bool, 0, len(mc.connectFuncs))
+func (mc *ModelConnectorImpl[T]) connectors() []func(t testing.TB, parent any) {
+	funcs := make([]func(t testing.TB, parent any), 0, len(mc.connectFuncs))
 	for _, f := range mc.connectFuncs {
-		funcs = append(funcs, func(t testing.TB, parent any) bool {
-			return f.connect(t, mc.m, parent)
+		funcs = append(funcs, func(t testing.TB, parent any) {
+			f.connect(t, mc.m, parent)
 		})
 	}
 	return funcs
@@ -189,14 +187,8 @@ func (f *Fixture) Iterate(setter func(model any) error) {
 			f.t.Fatalf("failed to visit %v: %v", c.model(), err)
 		}
 		for _, child := range c.children() {
-			ok := false
 			for _, connect := range child.connectors() {
-				if connect(f.t, c.model()) {
-					ok = true
-				}
-			}
-			if !ok {
-				f.t.Fatalf("failed to connect: child %T to parent %T", child.model(), c.model())
+				connect(f.t, c.model())
 			}
 		}
 	}
