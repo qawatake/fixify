@@ -8,6 +8,7 @@ linters:
     - nlreturn # generous whitespace violates house style
     - wsl # generous whitespace violates house style
     - depguard # unnecessary for small libraries
+    - funlen # rely on code review to limit function length
     - varnamelen
     - exhaustruct # for simplicity of examples
 issues:

@@ -41,6 +41,7 @@ func ExampleModel_WithParentAs() {
 			WithParentAs("follower", User("bob")).
 			WithParentAs("followee", User("alice")),
 	)
+	// Output:
 }
 
 func ExampleModel_Bind() {
