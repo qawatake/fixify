@@ -9,20 +9,11 @@ import (
 )
 
 func ExampleNewModel() {
-	newFixtureBook := func() *fixify.Model[model.Book] {
-		book := new(model.Book)
-		return fixify.NewModel(book,
-			// specify how to connect a book to a library.
-			fixify.ConnectorFunc(func(_ testing.TB, book *model.Book, library *model.Library) {
-				book.LibraryID = library.ID
-			}),
-			// specify how to connect a book to an author.
-			fixify.ConnectorFunc(func(_ testing.TB, book *model.Book, author *model.Author) {
-				book.AuthorID = author.ID
-			}),
-		)
-	}
-	newFixtureBook()
+	// t is passed from the test function.
+	t := &testing.T{}
+	fixify.New(t,
+		Book(),
+	)
 	// Output:
 }
 
@@ -40,6 +31,16 @@ func ExampleModel_With() {
 		),
 	)
 	// Output:
+}
+
+func ExampleModel_WithParentAs() {
+	// t is passed from the test function.
+	t := &testing.T{}
+	fixify.New(t,
+		Follow().
+			WithParentAs("follower", User("bob")).
+			WithParentAs("followee", User("alice")),
+	)
 }
 
 func ExampleModel_Bind() {
@@ -252,7 +253,7 @@ func TestFixture_Iterate(t *testing.T) {
 		}
 	})
 
-	t.Run("labeled", func(t *testing.T) {
+	t.Run("ParentAs", func(t *testing.T) {
 		t.Parallel()
 		f := fixify.New(t,
 			Follow().
@@ -286,9 +287,8 @@ func TestFixture_Iterate(t *testing.T) {
 
 // Book represents a fixture for the book model.
 func Book() *fixify.Model[model.Book] {
-	book := new(model.Book)
-	return fixify.NewModel(book,
-		// specify how to connect a book to a library.
+	return fixify.NewModel(
+		&model.Book{},
 		fixify.ConnectorFunc(func(_ testing.TB, book *model.Book, library *model.Library) {
 			book.LibraryID = library.ID
 		}),

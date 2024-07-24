@@ -22,13 +22,6 @@ func Example() {
 			Department("sales"),
 		),
 	)
-	Company().With(
-		Department("finance").With(
-			Employee(),
-			Employee(),
-			Employee(),
-		),
-	)
 	// Iterate applies visitor function to each model and then call the connector functions.
 	f.Iterate(func(v any) error {
 		switch v := v.(type) {
