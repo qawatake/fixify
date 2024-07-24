@@ -2,6 +2,7 @@
 
 [![Go Reference](https://pkg.go.dev/badge/github.com/qawatake/fixify.svg)](https://pkg.go.dev/github.com/qawatake/fixify)
 [![test](https://github.com/qawatake/fixify/actions/workflows/test.yaml/badge.svg)](https://github.com/qawatake/fixify/actions/workflows/test.yaml)
+[![codecov](https://codecov.io/gh/qawatake/fixify/graph/badge.svg)](https://codecov.io/gh/qawatake/fixify)
 
 `fixify` is a Go library that helps you to write test fixtures in a declarative way.
 
