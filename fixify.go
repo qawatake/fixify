@@ -21,8 +21,8 @@ var _ IModel = &Model[int]{}
 
 // IModel represents a set of models that can be connected to each other.
 type IModel interface {
-	// Children() []ModelConnector
-	// Descendants() []ModelConnector
+	// Children() []IModel
+	// Descendants() []IModel
 
 	model() any
 	setParent(parent IModel)
@@ -80,6 +80,7 @@ func (f connectParentFunc[U, V]) canConnect(parentModel any, label any) bool {
 	return ok
 }
 
+// connectParentFunc[U, V, L] implements Connecter[U].
 type connectParentFuncWithLabel[U, V any, L comparable] struct {
 	label L
 	fn    connectParentFunc[U, V]
@@ -114,6 +115,7 @@ func ConnectorFunc[U, V any](f func(t testing.TB, childModel *U, parentModel *V)
 	return connectParentFunc[U, V](f)
 }
 
+// ConnectorFuncWithLabel translates a function of the form func(t testing.TB, childModel *U, parentModel *V) with a label into Connecter[U].
 func ConnectorFuncWithLabel[U, V any, L comparable](label L, f func(t testing.TB, childModel *U, parentModel *V)) Connecter[U] {
 	return &connectParentFuncWithLabel[U, V, L]{label: label, fn: connectParentFunc[U, V](f)}
 }
@@ -135,10 +137,12 @@ func (m *Model[T]) With(children ...IModel) *Model[T] {
 	return m
 }
 
+// WithParent registers a parent model.
 func (m *Model[T]) WithParent(parent IModel) *Model[T] {
 	return m.WithParentAs(nil, parent)
 }
 
+// WithParentAs registers a parent model with a label.
 func (m *Model[T]) WithParentAs(label any, parent IModel) *Model[T] {
 	if m.hasChild(parent) {
 		// cyclic dependency is not allowed because we cannot sort models in a topological order.
@@ -150,14 +154,6 @@ func (m *Model[T]) WithParentAs(label any, parent IModel) *Model[T] {
 	parent.setChild(m, label)
 	m.setParent(parent)
 	return m
-}
-
-func (m *Model[T]) hasChild(child IModel) bool {
-	if m.childSet == nil {
-		return false
-	}
-	_, ok := m.childSet[child]
-	return ok
 }
 
 // Bind sets the pointer to the model.
@@ -199,6 +195,14 @@ func (m *Model[T]) setChild(child IModel, label any) {
 		m.childSet[child] = make(map[any]struct{})
 	}
 	m.childSet[child][label] = struct{}{}
+}
+
+func (m *Model[T]) hasChild(child IModel) bool {
+	if m.childSet == nil {
+		return false
+	}
+	_, ok := m.childSet[child]
+	return ok
 }
 
 // children returns the children models.
