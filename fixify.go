@@ -17,38 +17,6 @@ type Model[T any] struct {
 	childSet map[IModel]map[any]struct{}
 }
 
-type imodelWithL struct {
-	IModel
-	label any
-}
-
-func (m *Model[T]) Label(label any) IModel {
-	if label == nil {
-		panic(fmt.Errorf("label cannot be nil"))
-	}
-	return &imodelWithL{
-		IModel: m,
-		label:  label,
-	}
-}
-
-func (m *imodelWithL) Label() any {
-	return m.label
-}
-
-// type modelWithL[T any, L comparable] struct {
-// 	*Model[T]
-// 	label L
-// }
-
-// func (m *modelWithL[T, L]) Label() any {
-// 	return m.label
-// }
-
-type labler interface {
-	Label() any
-}
-
 var _ IModel = &Model[int]{}
 
 // IModel represents a set of models that can be connected to each other.
@@ -157,22 +125,14 @@ func (m *Model[T]) With(children ...IModel) *Model[T] {
 			// cyclic dependency is not allowed because we cannot sort models in a topological order.
 			panic(fmt.Errorf("cyclic dependency: %T <-> %T", m.Value(), c.model()))
 		}
-		if cl, ok := c.(*imodelWithL); ok {
-			if !c.canConnect(m.Value(), cl.Label()) {
-				panic(fmt.Errorf("cannot connect: child %T -> parent %T", c.model(), m.Value()))
-			}
-			m.setChild(cl.IModel, cl.Label())
-			c.setParent(m)
-		} else {
-			if !c.canConnect(m.Value(), nil) {
-				panic(fmt.Errorf("cannot connect: child %T -> parent %T", c.model(), m.Value()))
-			}
-			m.setChild(c, nil)
-			c.setParent(m)
+		if !c.canConnect(m.Value(), nil) {
+			panic(fmt.Errorf("cannot connect: child %T -> parent %T", c.model(), m.Value()))
 		}
+		m.setChild(c, nil)
+		c.setParent(m)
 	}
 
-	return m // メソッドチェーンで記述できるようにする
+	return m
 }
 
 func (m *Model[T]) WithParent(parent IModel) *Model[T] {
