@@ -103,7 +103,7 @@ func TestModel_Bind(t *testing.T) {
 			Book(),
 		),
 	)
-	f.Iterate(func(v any) error {
+	f.Apply(func(v any) error {
 		switch v := v.(type) {
 		case *model.Library:
 			v.ID = 1
@@ -158,7 +158,7 @@ func TestNew_and_Fixture_All(t *testing.T) {
 	})
 }
 
-func TestFixture_Iterate(t *testing.T) {
+func TestFixture_Apply(t *testing.T) {
 	t.Parallel()
 	t.Run("normal", func(t *testing.T) {
 		t.Parallel()
@@ -173,7 +173,7 @@ func TestFixture_Iterate(t *testing.T) {
 				Book(),
 			),
 		)
-		f.Iterate(func(v any) error {
+		f.Apply(func(v any) error {
 			switch v := v.(type) {
 			case *model.Library:
 				v.ID = 1
@@ -205,7 +205,7 @@ func TestFixture_Iterate(t *testing.T) {
 				WithParentAs("follower", User("bob")).
 				WithParentAs("followee", User("alice")),
 		)
-		f.Iterate(func(v any) error {
+		f.Apply(func(v any) error {
 			switch v := v.(type) {
 			case *model.User:
 				if v.Name == "bob" {

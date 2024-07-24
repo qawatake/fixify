@@ -21,9 +21,22 @@ func TestRun(t *testing.T) {
 			),
 		),
 	)
-	// Iterate applies visitor function to each model and connect it to its children in the topological order.
-	f.Iterate(setter)
+	// Apply resolves the dependencies and applies a visitor to each model.
+	f.Apply(setter)
 	// finally, run the test!
+}
+
+// Department is a fixture for model.Department.
+func Department(name string) *fixify.Model[model.Department] {
+	d := &model.Department{
+		Name: name,
+	}
+	return fixify.NewModel(d,
+		// specify how to connect a department to a company.
+		fixify.ConnectorFunc(func(_ testing.TB, department *model.Department, company *model.Company) {
+			department.CompanyID = company.ID
+		}),
+	)
 }
 ```
 

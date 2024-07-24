@@ -308,8 +308,8 @@ func (f *Fixture) All() []any {
 	return models
 }
 
-// Iterate applies visit and call connector functions in the topological order of the models.
-func (f *Fixture) Iterate(visit func(model any) error) {
+// Apply applies visit and call connector functions in the topological order of the models.
+func (f *Fixture) Apply(visit func(model any) error) {
 	f.t.Helper()
 	for _, c := range f.connectors {
 		if err := visit(c.model()); err != nil {

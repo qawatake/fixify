@@ -22,8 +22,8 @@ func Example() {
 			Department("sales"),
 		),
 	)
-	// Iterate applies visitor function to each model and then call the connector functions.
-	f.Iterate(func(v any) error {
+	// Apply applies visitor function to each model and then call the connector functions.
+	f.Apply(func(v any) error {
 		switch v := v.(type) {
 		case *model.Company:
 			v.ID = 1
