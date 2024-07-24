@@ -24,8 +24,8 @@ func Example() {
 	)
 	Company().With(
 		Department("finance").With(
-			Employee().As(1),
-			As(Employee(), 2),
+			Employee(),
+			Employee(),
 			Employee(),
 		),
 	)

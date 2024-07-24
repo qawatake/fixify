@@ -196,6 +196,20 @@ func TestNew_and_Fixture_All(t *testing.T) {
 		assert.Len(t, filter[*model.Book](f.All()), 3)
 		assert.Len(t, filter[*model.Page](f.All()), 1)
 	})
+
+	t.Run("labeled", func(t *testing.T) {
+		t.Parallel()
+		follow := Follow()
+		f := fixify.New(t,
+			User().With(
+				follow.Label("follower"),
+				follow.Label("followee"),
+			),
+		)
+		assert.Len(t, f.All(), 2)
+		assert.Len(t, filter[*model.User](f.All()), 1)
+		assert.Len(t, filter[*model.Follow](f.All()), 1)
+	})
 }
 
 func TestFixture_Iterate(t *testing.T) {
@@ -279,6 +293,21 @@ func Enrollment() *fixify.Model[model.Enrollment] {
 		}),
 		fixify.ConnectorFunc(func(_ testing.TB, enrollment *model.Enrollment, classroom *model.Classroom) {
 			enrollment.ClassroomID = classroom.ID
+		}),
+	)
+}
+
+func User() *fixify.Model[model.User] {
+	return fixify.NewModel(new(model.User))
+}
+
+func Follow() *fixify.Model[model.Follow] {
+	return fixify.NewModel(new(model.Follow),
+		fixify.ConnectorFuncWithLabel("follower", func(_ testing.TB, follow *model.Follow, follower *model.User) {
+			follow.FollowerID = follower.ID
+		}),
+		fixify.ConnectorFuncWithLabel("followee", func(_ testing.TB, follow *model.Follow, followee *model.User) {
+			follow.FolloweeID = followee.ID
 		}),
 	)
 }

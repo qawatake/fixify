@@ -12,23 +12,38 @@ type Model[T any] struct {
 	v              *T
 	connectorFuncs []Connecter[T]
 
-	parentSet map[imodelWithL]struct{}
-	childSet  map[IModel]struct{}
+	parentSet map[IModel]struct{}
+	// nil for any represents no label.
+	childSet map[IModel]map[any]struct{}
 }
 
 type imodelWithL struct {
-	model IModel
+	IModel
 	label any
 }
 
-type modelWithL[T any, L comparable] struct {
-	*Model[T]
-	label *L
+func (m *Model[T]) Label(label any) IModel {
+	if label == nil {
+		panic(fmt.Errorf("label cannot be nil"))
+	}
+	return &imodelWithL{
+		IModel: m,
+		label:  label,
+	}
 }
 
-func (m *modelWithL[T, L]) Label() any {
+func (m *imodelWithL) Label() any {
 	return m.label
 }
+
+// type modelWithL[T any, L comparable] struct {
+// 	*Model[T]
+// 	label L
+// }
+
+// func (m *modelWithL[T, L]) Label() any {
+// 	return m.label
+// }
 
 type labler interface {
 	Label() any
@@ -44,8 +59,10 @@ type IModel interface {
 	model() any
 	setParent(parent IModel)
 	parents() []IModel
-	setChild(child IModel)
+	// setChild(child IModel)
+	setChild(child IModel, label any)
 	children() []IModel
+	labels(child IModel) []any
 	canConnect(parent any, label any) bool
 	connectors() []func(t testing.TB, parent any, label any)
 }
@@ -62,8 +79,9 @@ func NewModel[T any](model *T, connectorFuncs ...Connecter[T]) *Model[T] {
 // It is used to establish connections between different model types.
 // Use [ConnectorFunc] to get one.
 type Connecter[T any] interface {
+	canConnect(parentModel any, label any) bool
 	connect(t testing.TB, childModel *T, parentModel any, label any)
-	canConnect(parentModel any, kind any) bool
+	// label() any
 }
 
 // connectParentFunc[U, V] implements Connecter[U].
@@ -74,6 +92,10 @@ var _ Connecter[int] = connectParentFunc[int, string](nil)
 //nolint:unused // it is necessary to implement the interface Connecter[U].
 func (f connectParentFunc[U, V]) connect(tb testing.TB, childModel *U, parentModel any, label any) {
 	tb.Helper()
+	if label != nil {
+		// connectParentFunc does not support label.
+		return
+	}
 	if v, ok := parentModel.(*V); ok {
 		f(tb, childModel, v)
 	}
@@ -81,6 +103,10 @@ func (f connectParentFunc[U, V]) connect(tb testing.TB, childModel *U, parentMod
 
 //nolint:unused // it is necessary to implement the interface Connecter[U].
 func (f connectParentFunc[U, V]) canConnect(parentModel any, label any) bool {
+	if label != nil {
+		// connectParentFunc does not support label.
+		return false
+	}
 	_, ok := parentModel.(*V)
 	return ok
 }
@@ -119,6 +145,10 @@ func ConnectorFunc[U, V any](f func(t testing.TB, childModel *U, parentModel *V)
 	return connectParentFunc[U, V](f)
 }
 
+func ConnectorFuncWithLabel[U, V any, L comparable](label L, f func(t testing.TB, childModel *U, parentModel *V)) Connecter[U] {
+	return &connectParentFuncWithLabel[U, V, L]{label: label, fn: connectParentFunc[U, V](f)}
+}
+
 // With registers children models.
 func (m *Model[T]) With(children ...IModel) *Model[T] {
 	for _, c := range children {
@@ -126,17 +156,19 @@ func (m *Model[T]) With(children ...IModel) *Model[T] {
 			// cyclic dependency is not allowed because we cannot sort models in a topological order.
 			panic(fmt.Errorf("cyclic dependency: %T <-> %T", m.Value(), c.model()))
 		}
-		if cl, ok := c.(labler); ok {
+		if cl, ok := c.(*imodelWithL); ok {
 			if !c.canConnect(m.Value(), cl.Label()) {
 				panic(fmt.Errorf("cannot connect: child %T -> parent %T", c.model(), m.Value()))
 			}
+			m.setChild(cl.IModel, cl.Label())
+			c.setParent(m)
 		} else {
 			if !c.canConnect(m.Value(), nil) {
 				panic(fmt.Errorf("cannot connect: child %T -> parent %T", c.model(), m.Value()))
 			}
+			m.setChild(c, nil)
+			c.setParent(m)
 		}
-		m.setChild(c)
-		c.setParent(m)
 	}
 
 	return m // メソッドチェーンで記述できるようにする
@@ -173,16 +205,30 @@ func (m *Model[T]) parents() []IModel {
 }
 
 // setChild sets the child model.
-func (m *Model[T]) setChild(child IModel) {
+func (m *Model[T]) setChild(child IModel, label any) {
 	if m.childSet == nil {
-		m.childSet = map[IModel]struct{}{}
+		m.childSet = make(map[IModel]map[any]struct{})
 	}
-	m.childSet[child] = struct{}{}
+	if m.childSet[child] == nil {
+		m.childSet[child] = make(map[any]struct{})
+	}
+	m.childSet[child][label] = struct{}{}
 }
 
 // children returns the children models.
 func (m *Model[T]) children() []IModel {
 	return keys(m.childSet)
+}
+
+func (m *Model[T]) labels(child IModel) []any {
+	if m.childSet == nil {
+		return nil
+	}
+	labels := make([]any, 0, len(m.childSet[child]))
+	for label := range m.childSet[child] {
+		labels = append(labels, label)
+	}
+	return labels
 }
 
 // connectors returns the connector functions.
@@ -283,11 +329,10 @@ func (f *Fixture) Iterate(visit func(model any) error) {
 			f.t.Fatalf("failed to visit %v: %v", c.model(), err)
 		}
 		for _, child := range c.children() {
+			labels := c.labels(child)
 			for _, connect := range child.connectors() {
-				if cl, ok := child.(labler); ok {
-					connect(f.t, c.model(), cl.Label())
-				} else {
-					connect(f.t, c.model(), nil)
+				for _, label := range labels {
+					connect(f.t, c.model(), label)
 				}
 			}
 		}
@@ -309,7 +354,11 @@ func uniq(cs []IModel) []IModel {
 func flat(cs []IModel) []IModel {
 	all := make([]IModel, 0, len(cs))
 	for _, c := range cs {
-		all = append(all, c)
+		if cc, ok := c.(*imodelWithL); ok {
+			all = append(all, cc.IModel)
+		} else {
+			all = append(all, c)
+		}
 		all = append(all, flat(c.children())...)
 	}
 	return all

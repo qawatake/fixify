@@ -51,3 +51,13 @@ type Enrollment struct {
 	StudentID   int64
 	ClassroomID int64
 }
+
+type User struct {
+	ID int64
+}
+
+type Follow struct {
+	ID         int64
+	FollowerID int64
+	FolloweeID int64
+}
