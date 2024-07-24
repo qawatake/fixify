@@ -13,7 +13,7 @@ import (
 func Example() {
 	// t is passed from the test function.
 	t := &testing.T{}
-	// specify how to connect models in the declarative way.
+	// specify how to connect models in a declarative way.
 	f := fixify.New(t,
 		Company().With(
 			Department("finance").With(
