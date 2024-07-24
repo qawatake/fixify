@@ -257,13 +257,13 @@ type Fixture struct {
 	connectors []IModel
 }
 
-func New(tb testing.TB, cs ...IModel) *Fixture {
+func New(tb testing.TB, fixtures ...IModel) *Fixture {
 	tb.Helper()
 	f := &Fixture{
 		t: tb,
 	}
 	// 順序をあえてランダムにする
-	all := collect(cs)
+	all := collect(fixtures)
 	rand.Shuffle(len(all), func(i, j int) {
 		all[i], all[j] = all[j], all[i]
 	})
@@ -329,8 +329,8 @@ func (f *Fixture) Apply(visit func(model any) error) {
 }
 
 // collect collects all models that are connected to each other.
-func collect(cs []IModel) []IModel {
-	set := make(map[IModel]struct{}, len(cs))
+func collect(fixtures []IModel) []IModel {
+	set := make(map[IModel]struct{}, len(fixtures))
 	var visit func(c IModel)
 	visit = func(c IModel) {
 		if _, ok := set[c]; ok {
@@ -344,7 +344,7 @@ func collect(cs []IModel) []IModel {
 			visit(parent)
 		}
 	}
-	for _, c := range cs {
+	for _, c := range fixtures {
 		visit(c)
 	}
 	return keys(set)
