@@ -1,6 +1,7 @@
 package fixify_test
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/qawatake/fixify"
@@ -42,6 +43,30 @@ func ExampleModel_WithParentAs() {
 			WithParentAs("followee", User("alice")),
 	)
 	// Output:
+}
+
+func ExampleFixture_All() {
+	// t is passed from the test function.
+	t := &testing.T{}
+	f := fixify.New(t,
+		Company().With(
+			Department("finance").With(
+				Employee(),
+			),
+			Department("sales"),
+		),
+	)
+	// a model is either *model.Company, *model.Department, or *model.Employee.
+	models := f.All()
+
+	fmt.Println("Number of companies:", len(filter[*model.Company](models)))
+	fmt.Println("Number of departments:", len(filter[*model.Department](models)))
+	fmt.Println("Number of employees:", len(filter[*model.Employee](models)))
+
+	// Output:
+	// Number of companies: 1
+	// Number of departments: 2
+	// Number of employees: 1
 }
 
 func ExampleModel_Bind() {

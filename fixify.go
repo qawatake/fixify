@@ -116,6 +116,8 @@ func ConnectorFunc[U, V any](f func(t testing.TB, childModel *U, parentModel *V)
 }
 
 // ConnectorFuncWithLabel translates a function of the form func(t testing.TB, childModel *U, parentModel *V) with a label into Connecter[U].
+// With different labels, you can connect the same parent model in different ways.
+// See an example in [Model.WithParentAs].
 func ConnectorFuncWithLabel[U, V any, L comparable](label L, f func(t testing.TB, childModel *U, parentModel *V)) Connecter[U] {
 	return &connectParentFuncWithLabel[U, V, L]{label: label, fn: connectParentFunc[U, V](f)}
 }
