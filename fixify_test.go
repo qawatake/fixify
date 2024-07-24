@@ -122,47 +122,6 @@ func TestModel_Bind(t *testing.T) {
 	}
 }
 
-// func TestModelConnector_Children(t *testing.T) {
-// 	t.Parallel()
-
-// 	t.Run("no children", func(t *testing.T) {
-// 		library := Library()
-// 		assert.Empty(t, library.Children())
-// 	})
-
-// 	t.Run("normal", func(t *testing.T) {
-// 		library := Library().With(
-// 			Book().With(
-// 				Page(),
-// 			),
-// 			Book(),
-// 		)
-// 		assert.Len(t, library.Children(), 2)
-// 		assert.Len(t, extractModels[*model.Book](library.Children()), 2)
-// 	})
-// }
-
-// func TestModelConnector_Descendants(t *testing.T) {
-// 	t.Parallel()
-
-// 	t.Run("no descendants", func(t *testing.T) {
-// 		library := Library()
-// 		assert.Empty(t, library.Descendants())
-// 	})
-
-// 	t.Run("normal", func(t *testing.T) {
-// 		library := Library().With(
-// 			Book().With(
-// 				Page(),
-// 			),
-// 			Book(),
-// 		)
-// 		assert.Len(t, library.Descendants(), 3)
-// 		assert.Len(t, extractModels[*model.Book](library.Descendants()), 2)
-// 		assert.Len(t, extractModels[*model.Page](library.Descendants()), 1)
-// 	})
-// }
-
 func TestNew_and_Fixture_All(t *testing.T) {
 	t.Parallel()
 	t.Run("no connectors", func(t *testing.T) {
@@ -197,20 +156,6 @@ func TestNew_and_Fixture_All(t *testing.T) {
 		assert.Len(t, filter[*model.Book](f.All()), 3)
 		assert.Len(t, filter[*model.Page](f.All()), 1)
 	})
-
-	// t.Run("labeled", func(t *testing.T) {
-	// 	t.Parallel()
-	// 	follow := Follow()
-	// 	f := fixify.New(t,
-	// 		User().With(
-	// 			follow.Label("follower"),
-	// 			follow.Label("followee"),
-	// 		),
-	// 	)
-	// 	assert.Len(t, f.All(), 2)
-	// 	assert.Len(t, filter[*model.User](f.All()), 1)
-	// 	assert.Len(t, filter[*model.Follow](f.All()), 1)
-	// })
 }
 
 func TestFixture_Iterate(t *testing.T) {
