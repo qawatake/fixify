@@ -197,57 +197,91 @@ func TestNew_and_Fixture_All(t *testing.T) {
 		assert.Len(t, filter[*model.Page](f.All()), 1)
 	})
 
-	t.Run("labeled", func(t *testing.T) {
-		t.Parallel()
-		follow := Follow()
-		f := fixify.New(t,
-			User().With(
-				follow.Label("follower"),
-				follow.Label("followee"),
-			),
-		)
-		assert.Len(t, f.All(), 2)
-		assert.Len(t, filter[*model.User](f.All()), 1)
-		assert.Len(t, filter[*model.Follow](f.All()), 1)
-	})
+	// t.Run("labeled", func(t *testing.T) {
+	// 	t.Parallel()
+	// 	follow := Follow()
+	// 	f := fixify.New(t,
+	// 		User().With(
+	// 			follow.Label("follower"),
+	// 			follow.Label("followee"),
+	// 		),
+	// 	)
+	// 	assert.Len(t, f.All(), 2)
+	// 	assert.Len(t, filter[*model.User](f.All()), 1)
+	// 	assert.Len(t, filter[*model.Follow](f.All()), 1)
+	// })
 }
 
 func TestFixture_Iterate(t *testing.T) {
 	t.Parallel()
-	f := fixify.New(t,
-		Library().With(
-			Book().With(
-				Page(),
+	t.Run("normal", func(t *testing.T) {
+		t.Parallel()
+		f := fixify.New(t,
+			Library().With(
+				Book().With(
+					Page(),
+				),
+				Book(),
 			),
-			Book(),
-		),
-		Library().With(
-			Book(),
-		),
-	)
-	f.Iterate(func(v any) error {
-		switch v := v.(type) {
-		case *model.Library:
-			v.ID = 1
-		case *model.Book:
-			v.ID = 2
-		case *model.Page:
-			v.ID = 3
+			Library().With(
+				Book(),
+			),
+		)
+		f.Iterate(func(v any) error {
+			switch v := v.(type) {
+			case *model.Library:
+				v.ID = 1
+			case *model.Book:
+				v.ID = 2
+			case *model.Page:
+				v.ID = 3
+			}
+			return nil
+		})
+		{
+			got := filter[*model.Library](f.All())
+			assert.ElementsMatch(t, []*model.Library{{ID: 1}, {ID: 1}}, got)
 		}
-		return nil
+		{
+			got := filter[*model.Book](f.All())
+			assert.ElementsMatch(t, []*model.Book{{ID: 2, LibraryID: 1}, {ID: 2, LibraryID: 1}, {ID: 2, LibraryID: 1}}, got)
+		}
+		{
+			got := filter[*model.Page](f.All())
+			assert.ElementsMatch(t, []*model.Page{{ID: 3, BookID: 2}}, got)
+		}
 	})
-	{
-		got := filter[*model.Library](f.All())
-		assert.ElementsMatch(t, []*model.Library{{ID: 1}, {ID: 1}}, got)
-	}
-	{
-		got := filter[*model.Book](f.All())
-		assert.ElementsMatch(t, []*model.Book{{ID: 2, LibraryID: 1}, {ID: 2, LibraryID: 1}, {ID: 2, LibraryID: 1}}, got)
-	}
-	{
-		got := filter[*model.Page](f.All())
-		assert.ElementsMatch(t, []*model.Page{{ID: 3, BookID: 2}}, got)
-	}
+
+	t.Run("labeled", func(t *testing.T) {
+		t.Parallel()
+		f := fixify.New(t,
+			Follow().
+				WithParentAs("follower", User("bob")).
+				WithParentAs("followee", User("alice")),
+		)
+		f.Iterate(func(v any) error {
+			switch v := v.(type) {
+			case *model.User:
+				if v.Name == "bob" {
+					v.ID = 1
+				} else {
+					v.ID = 2
+				}
+			case *model.Follow:
+				v.ID = 3
+			}
+			return nil
+		})
+		{
+			got := filter[*model.User](f.All())
+			assert.ElementsMatch(t, []*model.User{{ID: 1, Name: "bob"}, {ID: 2, Name: "alice"}}, got)
+		}
+		{
+			got := filter[*model.Follow](f.All())
+			assert.Len(t, got, 1)
+			assert.Equal(t, &model.Follow{ID: 3, FollowerID: 1, FolloweeID: 2}, got[0])
+		}
+	})
 }
 
 // Book represents a fixture for the book model.
@@ -297,8 +331,10 @@ func Enrollment() *fixify.Model[model.Enrollment] {
 	)
 }
 
-func User() *fixify.Model[model.User] {
-	return fixify.NewModel(new(model.User))
+func User(name string) *fixify.Model[model.User] {
+	return fixify.NewModel(&model.User{
+		Name: name,
+	})
 }
 
 func Follow() *fixify.Model[model.Follow] {

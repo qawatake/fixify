@@ -61,6 +61,7 @@ type IModel interface {
 	parents() []IModel
 	// setChild(child IModel)
 	setChild(child IModel, label any)
+	hasChild(child IModel) bool
 	children() []IModel
 	labels(child IModel) []any
 	canConnect(parent any, label any) bool
@@ -174,6 +175,31 @@ func (m *Model[T]) With(children ...IModel) *Model[T] {
 	return m // メソッドチェーンで記述できるようにする
 }
 
+func (m *Model[T]) WithParent(parent IModel) *Model[T] {
+	return m.WithParentAs(nil, parent)
+}
+
+func (m *Model[T]) WithParentAs(label any, parent IModel) *Model[T] {
+	if m.hasChild(parent) {
+		// cyclic dependency is not allowed because we cannot sort models in a topological order.
+		panic(fmt.Errorf("cyclic dependency: %T <-> %T", m.Value(), parent.model()))
+	}
+	if !m.canConnect(parent.model(), label) {
+		panic(fmt.Errorf("cannot connect: child %T -> parent %T", m.Value(), parent.model()))
+	}
+	parent.setChild(m, label)
+	m.setParent(parent)
+	return m
+}
+
+func (m *Model[T]) hasChild(child IModel) bool {
+	if m.childSet == nil {
+		return false
+	}
+	_, ok := m.childSet[child]
+	return ok
+}
+
 // Bind sets the pointer to the model.
 // It is useful when you want to connect models to multiple parents.
 func (m *Model[T]) Bind(b **Model[T]) *Model[T] {
@@ -253,12 +279,10 @@ func (m *Model[T]) canConnect(parent any, label any) bool {
 	return false
 }
 
-// func (m *ModelConnectorImpl[T]) Children() []ModelConnector {
-// 	return m.children()
+// func (m *Model[T]) Children() []IModel {
 // }
 
-// func (m *ModelConnectorImpl[T]) Descendants() []ModelConnector {
-// 	return flat(m.children()...)
+// func (m *Model[T]) Descendants() []IModel {
 // }
 
 // Fixture collects models and resolves their dependencies.
@@ -272,12 +296,11 @@ func New(tb testing.TB, cs ...IModel) *Fixture {
 	f := &Fixture{
 		t: tb,
 	}
-	allWithDuplicates := flat(cs)
 	// 順序をあえてランダムにする
-	rand.Shuffle(len(allWithDuplicates), func(i, j int) {
-		allWithDuplicates[i], allWithDuplicates[j] = allWithDuplicates[j], allWithDuplicates[i]
+	all := collect(cs)
+	rand.Shuffle(len(all), func(i, j int) {
+		all[i], all[j] = all[j], all[i]
 	})
-	all := uniq(allWithDuplicates)
 	numParents := make(map[IModel]int, len(all))
 	for _, c := range all {
 		numParents[c] = len(c.parents())
@@ -339,29 +362,26 @@ func (f *Fixture) Iterate(visit func(model any) error) {
 	}
 }
 
-func uniq(cs []IModel) []IModel {
-	seen := make(map[IModel]struct{}, len(cs))
-	uniq := make([]IModel, 0, len(cs))
-	for _, c := range cs {
-		if _, ok := seen[c]; !ok {
-			seen[c] = struct{}{}
-			uniq = append(uniq, c)
+// collect collects all models that are connected to each other.
+func collect(cs []IModel) []IModel {
+	set := make(map[IModel]struct{}, len(cs))
+	var visit func(c IModel)
+	visit = func(c IModel) {
+		if _, ok := set[c]; ok {
+			return
+		}
+		set[c] = struct{}{}
+		for _, child := range c.children() {
+			visit(child)
+		}
+		for _, parent := range c.parents() {
+			visit(parent)
 		}
 	}
-	return uniq
-}
-
-func flat(cs []IModel) []IModel {
-	all := make([]IModel, 0, len(cs))
 	for _, c := range cs {
-		if cc, ok := c.(*imodelWithL); ok {
-			all = append(all, cc.IModel)
-		} else {
-			all = append(all, c)
-		}
-		all = append(all, flat(c.children())...)
+		visit(c)
 	}
-	return all
+	return keys(set)
 }
 
 func keys[U comparable, V any](m map[U]V) []U {
