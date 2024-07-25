@@ -1,6 +1,7 @@
 package fixify_test
 
 import (
+	"errors"
 	"fmt"
 	"testing"
 
@@ -344,8 +345,8 @@ func TestFixture_Apply(t *testing.T) {
 		t.Parallel()
 		dt := &dummyTestReporter{TB: t}
 		f := fixify.New(dt, Library())
-		f.Apply(func(v any) error {
-			return fmt.Errorf("error")
+		f.Apply(func(_ any) error {
+			return errors.New("error")
 		})
 		assert.Equal(t, 1, dt.countFatalf)
 	})
@@ -427,6 +428,6 @@ type dummyTestReporter struct {
 	countFatalf int
 }
 
-func (d *dummyTestReporter) Fatalf(format string, args ...interface{}) {
+func (d *dummyTestReporter) Fatalf(_ string, _ ...interface{}) {
 	d.countFatalf++
 }
