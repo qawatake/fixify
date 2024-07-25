@@ -103,7 +103,7 @@ func TestModel_With(t *testing.T) {
 	t.Run("try to connect to non-parent", func(t *testing.T) {
 		t.Parallel()
 		book := Book()
-		assert.Panics(t, func() {
+		assert.PanicsWithError(t, "cannot connect: child *model.Library -> parent *model.Book", func() {
 			book.With(Library())
 		})
 	})
@@ -182,7 +182,7 @@ func TestModel_WithParentAs(t *testing.T) {
 	t.Run("cyclic", func(t *testing.T) {
 		t.Parallel()
 		var c *fixify.Model[model.Cyclic]
-		assert.Panics(t, func() {
+		assert.PanicsWithError(t, "cyclic dependency: *model.Cyclic <-> *model.Cyclic", func() {
 			Cyclic().With(
 				Cyclic().Bind(&c),
 			).WithParentAs(nil, c)
@@ -191,28 +191,28 @@ func TestModel_WithParentAs(t *testing.T) {
 
 	t.Run("try to connect to non-parent", func(t *testing.T) {
 		t.Parallel()
-		assert.Panics(t, func() {
+		assert.PanicsWithError(t, "cannot connect: child *model.Follow -> parent *model.Library", func() {
 			Follow().WithParentAs("follower", Library())
 		})
 	})
 
 	t.Run("not support label but given", func(t *testing.T) {
 		t.Parallel()
-		assert.Panics(t, func() {
+		assert.PanicsWithError(t, "cannot connect: child *model.Book -> parent *model.Library", func() {
 			Book().WithParentAs("label", Library())
 		})
 	})
 
 	t.Run("unknown label value", func(t *testing.T) {
 		t.Parallel()
-		assert.Panics(t, func() {
+		assert.PanicsWithError(t, "cannot connect: child *model.Follow -> parent *model.User", func() {
 			Follow().WithParentAs("unknown", User("bob"))
 		})
 	})
 
 	t.Run("unknown label type", func(t *testing.T) {
 		t.Parallel()
-		assert.Panics(t, func() {
+		assert.PanicsWithError(t, "cannot connect: child *model.Follow -> parent *model.User", func() {
 			Follow().WithParentAs(1, User("bob"))
 		})
 	})
