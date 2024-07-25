@@ -113,7 +113,7 @@ func TestModel_With(t *testing.T) {
 		library := Library()
 		book := Book()
 		library.With(book)
-		assert.Panics(t, func() {
+		assert.PanicsWithError(t, "cyclic dependency: *model.Book <-> *model.Library", func() {
 			book.With(library)
 		})
 	})
