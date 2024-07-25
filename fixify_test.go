@@ -339,6 +339,16 @@ func TestFixture_Apply(t *testing.T) {
 			assert.Equal(t, &model.Follow{ID: 3, FollowerID: 1, FolloweeID: 2}, got[0])
 		}
 	})
+
+	t.Run("error", func(t *testing.T) {
+		t.Parallel()
+		dt := &dummyTestReporter{TB: t}
+		f := fixify.New(dt, Library())
+		f.Apply(func(v any) error {
+			return fmt.Errorf("error")
+		})
+		assert.Equal(t, 1, dt.countFatalf)
+	})
 }
 
 // Book represents a fixture for the book model.
@@ -410,4 +420,13 @@ func Cyclic() *fixify.Model[model.Cyclic] {
 			self.CyclicID = parent.ID
 		}),
 	)
+}
+
+type dummyTestReporter struct {
+	testing.TB
+	countFatalf int
+}
+
+func (d *dummyTestReporter) Fatalf(format string, args ...interface{}) {
+	d.countFatalf++
 }
