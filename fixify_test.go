@@ -196,6 +196,13 @@ func TestModel_WithParentAs(t *testing.T) {
 		})
 	})
 
+	t.Run("not support label but given", func(t *testing.T) {
+		t.Parallel()
+		assert.Panics(t, func() {
+			Book().WithParentAs("label", Library())
+		})
+	})
+
 	t.Run("unknown label value", func(t *testing.T) {
 		t.Parallel()
 		assert.Panics(t, func() {
