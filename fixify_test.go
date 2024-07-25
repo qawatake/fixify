@@ -118,6 +118,91 @@ func TestModel_With(t *testing.T) {
 	})
 }
 
+func TestModel_WithParent(t *testing.T) {
+	t.Parallel()
+	f := fixify.New(t,
+		Book().WithParent(Library()),
+	)
+	f.Apply(func(v any) error {
+		switch v := v.(type) {
+		case *model.Library:
+			v.ID = 1
+		case *model.Book:
+			v.ID = 2
+		}
+		return nil
+	})
+	{
+		got := filter[*model.Library](f.All())
+		assert.ElementsMatch(t, []*model.Library{{ID: 1}}, got)
+	}
+	{
+		got := filter[*model.Book](f.All())
+		assert.ElementsMatch(t, []*model.Book{{ID: 2, LibraryID: 1}}, got)
+	}
+}
+
+func TestModel_WithParentAs(t *testing.T) {
+	t.Parallel()
+
+	t.Run("nil label is equivalent to no label", func(t *testing.T) {
+		t.Parallel()
+		setter := func(v any) error {
+			switch v := v.(type) {
+			case *model.Library:
+				v.ID = 1
+			case *model.Book:
+				v.ID = 2
+			}
+			return nil
+		}
+
+		f1 := fixify.New(t,
+			Book().WithParentAs(nil, Library()),
+		)
+		f2 := fixify.New(t,
+			Book().WithParent(Library()),
+		)
+		f1.Apply(setter)
+		f2.Apply(setter)
+
+		{
+			got1 := filter[*model.Library](f1.All())
+			got2 := filter[*model.Library](f2.All())
+			assert.ElementsMatch(t, got1, got2)
+		}
+		{
+			got1 := filter[*model.Book](f1.All())
+			got2 := filter[*model.Book](f2.All())
+			assert.ElementsMatch(t, got1, got2)
+		}
+	})
+
+	t.Run("cyclic", func(t *testing.T) {
+		t.Parallel()
+		var c *fixify.Model[model.Cyclic]
+		assert.Panics(t, func() {
+			Cyclic().With(
+				Cyclic().Bind(&c),
+			).WithParentAs(nil, c)
+		})
+	})
+
+	t.Run("try to connect to non-parent", func(t *testing.T) {
+		t.Parallel()
+		assert.Panics(t, func() {
+			Follow().WithParentAs("follower", Library())
+		})
+	})
+
+	t.Run("unknown label", func(t *testing.T) {
+		t.Parallel()
+		assert.Panics(t, func() {
+			Follow().WithParentAs("unknown", User("bob"))
+		})
+	})
+}
+
 func TestModel_Bind(t *testing.T) {
 	t.Parallel()
 	var library *fixify.Model[model.Library]
@@ -315,6 +400,14 @@ func Follow() *fixify.Model[model.Follow] {
 		}),
 		fixify.ConnectorFuncWithLabel("followee", func(_ testing.TB, follow *model.Follow, followee *model.User) {
 			follow.FolloweeID = followee.ID
+		}),
+	)
+}
+
+func Cyclic() *fixify.Model[model.Cyclic] {
+	return fixify.NewModel(new(model.Cyclic),
+		fixify.ConnectorFunc(func(_ testing.TB, self *model.Cyclic, parent *model.Cyclic) {
+			self.CyclicID = parent.ID
 		}),
 	)
 }

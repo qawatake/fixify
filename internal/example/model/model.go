@@ -62,3 +62,9 @@ type Follow struct {
 	FollowerID int64
 	FolloweeID int64
 }
+
+// unsupported model
+type Cyclic struct {
+	ID       int64
+	CyclicID int64
+}

@@ -89,10 +89,11 @@ type connectParentFuncWithLabel[U, V any, L comparable] struct {
 //nolint:unused // it is necessary to implement the interface Connecter[U].
 func (f *connectParentFuncWithLabel[U, V, L]) connect(tb testing.TB, childModel *U, parentModel any, label any) {
 	tb.Helper()
-	if label, ok := label.(L); ok {
-		if label != f.label {
-			return
-		}
+	if _, ok := label.(L); !ok {
+		return
+	}
+	if l, ok := label.(L); ok && l != f.label {
+		return
 	}
 	if v, ok := parentModel.(*V); ok {
 		f.fn(tb, childModel, v)
@@ -101,10 +102,11 @@ func (f *connectParentFuncWithLabel[U, V, L]) connect(tb testing.TB, childModel 
 
 //nolint:unused // it is necessary to implement the interface Connecter[U].
 func (f *connectParentFuncWithLabel[U, V, L]) canConnect(parentModel any, label any) bool {
-	if label, ok := label.(L); ok {
-		if label != f.label {
-			return false
-		}
+	if _, ok := label.(L); !ok {
+		return false
+	}
+	if l, ok := label.(L); ok && l != f.label {
+		return false
 	}
 	_, ok := parentModel.(*V)
 	return ok
