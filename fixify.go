@@ -198,9 +198,6 @@ func (m *Model[T]) setChild(child IModel, label any) {
 }
 
 func (m *Model[T]) hasChild(child IModel) bool {
-	if m.childSet == nil {
-		return false
-	}
 	_, ok := m.childSet[child]
 	return ok
 }
