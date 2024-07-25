@@ -196,10 +196,17 @@ func TestModel_WithParentAs(t *testing.T) {
 		})
 	})
 
-	t.Run("unknown label", func(t *testing.T) {
+	t.Run("unknown label value", func(t *testing.T) {
 		t.Parallel()
 		assert.Panics(t, func() {
 			Follow().WithParentAs("unknown", User("bob"))
+		})
+	})
+
+	t.Run("unknown label type", func(t *testing.T) {
+		t.Parallel()
+		assert.Panics(t, func() {
+			Follow().WithParentAs(1, User("bob"))
 		})
 	})
 }
