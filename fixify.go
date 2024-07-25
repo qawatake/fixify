@@ -41,6 +41,8 @@ func NewModel[T any](model *T, connectorFuncs ...Connecter[T]) *Model[T] {
 	return &Model[T]{
 		v:              model,
 		connectorFuncs: connectorFuncs,
+		parentSet:      map[IModel]struct{}{},
+		childSet:       map[IModel]map[any]struct{}{},
 	}
 }
 
@@ -179,9 +181,6 @@ func (m *Model[T]) model() any {
 
 // setParent sets the parent model.
 func (m *Model[T]) setParent(parent IModel) {
-	if m.parentSet == nil {
-		m.parentSet = map[IModel]struct{}{}
-	}
 	m.parentSet[parent] = struct{}{}
 }
 
@@ -192,9 +191,6 @@ func (m *Model[T]) parents() []IModel {
 
 // setChild sets the child model.
 func (m *Model[T]) setChild(child IModel, label any) {
-	if m.childSet == nil {
-		m.childSet = make(map[IModel]map[any]struct{})
-	}
 	if m.childSet[child] == nil {
 		m.childSet[child] = make(map[any]struct{})
 	}
@@ -214,10 +210,8 @@ func (m *Model[T]) children() []IModel {
 	return keys(m.childSet)
 }
 
+// labels returns the labels of the child model.
 func (m *Model[T]) labels(child IModel) []any {
-	if m.childSet == nil {
-		return nil
-	}
 	labels := make([]any, 0, len(m.childSet[child]))
 	for label := range m.childSet[child] {
 		labels = append(labels, label)
